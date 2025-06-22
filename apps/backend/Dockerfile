@@ -7,7 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --no-audit --prefer-offline
 
 # Copy source code
 COPY . .
@@ -28,7 +28,7 @@ COPY package*.json ./
 COPY prisma ./prisma/
 
 # Install all dependencies including devDependencies
-RUN npm ci
+RUN npm ci --no-audit --prefer-offline --ignore-scripts
 
 # Generate Prisma client
 RUN npx prisma generate
@@ -48,7 +48,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install production dependencies only
-RUN npm ci --only=production
+RUN npm ci --omit=dev --no-audit --prefer-offline --ignore-scripts
 
 # Copy Prisma schema and generated client
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
