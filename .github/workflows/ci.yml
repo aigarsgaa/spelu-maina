@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: boardgame_marketplace_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      # Set up frontend
+      - name: Install frontend dependencies
+        working-directory: ./apps/frontend
+        run: npm ci
+      
+      - name: Lint frontend
+        working-directory: ./apps/frontend
+        run: npm run lint
+      
+      - name: Build frontend
+        working-directory: ./apps/frontend
+        run: npm run build
+      
+      # Set up backend
+      - name: Install backend dependencies
+        working-directory: ./apps/backend
+        run: npm ci
+      
+      - name: Generate Prisma Client
+        working-directory: ./apps/backend
+        run: npx prisma generate
+      
+      - name: Run database migrations
+        working-directory: ./apps/backend
+        run: npx prisma migrate dev --name ci --skip-generate
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardgame_marketplace_test
+          
+      - name: Lint backend
+        working-directory: ./apps/backend
+        run: npm run lint
+      
+      - name: Run backend tests
+        working-directory: ./apps/backend
+        run: npm run test:ci
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/boardgame_marketplace_test
+          NODE_ENV: test
+    
+    # Deploy steps would go here for production deployments
