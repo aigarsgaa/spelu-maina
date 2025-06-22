@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+// User model for authentication and profile information
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  name          String?
+  password      String
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  listings      Listing[]
+  sentMessages  Message[] @relation("SentMessages")
+  receivedMessages Message[] @relation("ReceivedMessages")
+  location      Location?  @relation(fields: [locationId], references: [id])
+  locationId    String?
+}
+
+// Location model for user addresses
+model Location {
+  id        String    @id @default(uuid())
+  address   String
+  city      String
+  country   String
+  postalCode String
+  lat       Float
+  lng       Float
+  users     User[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// Board game model synchronized with BoardGameGeek
+model Game {
+  id              String    @id
+  bggId           Int       @unique
+  name            String
+  yearPublished   Int?
+  minPlayers      Int?
+  maxPlayers      Int?
+  playingTime     Int?
+  minPlaytime     Int?
+  maxPlaytime     Int?
+  minAge          Int?
+  description     String?
+  thumbnail       String?
+  image           String?
+  averageRating   Float?
+  averageWeight   Float?
+  rank            Int?
+  listings        Listing[]
+  categories      GameCategory[]
+  mechanics       GameMechanic[]
+  publishers      GamePublisher[]
+  designers       GameDesigner[]
+  artists         GameArtist[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Game listing model for marketplace
+model Listing {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  condition   Condition
+  price       Float?
+  status      ListingStatus @default(AVAILABLE)
+  game        Game      @relation(fields: [gameId], references: [id])
+  gameId      String
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String
+  images      ListingImage[]
+  messages    Message[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Listing images
+model ListingImage {
+  id        String   @id @default(uuid())
+  url       String
+  isPrimary Boolean  @default(false)
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  createdAt DateTime @default(now())
+}
+
+// Message model for user communication
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  sender      User     @relation("SentMessages", fields: [senderId], references: [id])
+  senderId    String
+  recipient   User     @relation("ReceivedMessages", fields: [recipientId], references: [id])
+  recipientId String
+  listing     Listing? @relation(fields: [listingId], references: [id])
+  listingId   String?
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// Game categories
+model GameCategory {
+  id          String   @id @default(uuid())
+  bggId       Int      @unique
+  name        String
+  games       Game[]
+  description String?
+}
+
+// Game mechanics
+model GameMechanic {
+  id          String   @id @default(uuid())
+  bggId       Int      @unique
+  name        String
+  games       Game[]
+  description String?
+}
+
+// Game publishers
+model GamePublisher {
+  id      String   @id @default(uuid())
+  bggId    Int      @unique
+  name    String
+  games   Game[]
+  country String?
+}
+
+// Game designers
+model GameDesigner {
+  id      String   @id @default(uuid())
+  bggId    Int      @unique
+  name    String
+  games   Game[]
+  country String?
+}
+
+// Game artists
+model GameArtist {
+  id      String   @id @default(uuid())
+  bggId    Int      @unique
+  name    String
+  games   Game[]
+  country String?
+}
+
+// Enums
+enum UserRole {
+  USER
+  ADMIN
+  MODERATOR
+}
+
+enum Condition {
+  NEW
+  LIKE_NEW
+  GOOD
+  ACCEPTABLE
+  POOR
+}
+
+enum ListingStatus {
+  AVAILABLE
+  PENDING
+  SOLD
+  TRADED
+  REMOVED
+}

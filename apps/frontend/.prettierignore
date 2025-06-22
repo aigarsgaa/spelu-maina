@@ -1,0 +1,8 @@
+.next
+node_modules
+package.json
+package-lock.json
+README.md
+.next
+out
+dist
